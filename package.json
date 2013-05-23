@@ -1,0 +1,66 @@
+{
+  "name": "wordpress-theme-downloader",
+  "version": "1.0.0",
+  "description": "Scrapes theme zip files from wordpress.org",
+  "keywords": [
+    "themes",
+    "blogging",
+    "wordpress",
+    "scrape"
+  ],
+  "maintainers": [
+  {
+    "name": "Sarah Scodel",
+    "email": "sscodel@mit.edu"
+  },
+  {
+    "name": "Ted Benson",
+    "email": "eob@csail.mit.edu",
+    "url": "http://www.edwardbenson.com/"
+  }],
+  "contributors": [
+  ],
+  "bugs": {
+    "email": "eob@csail.mit.edu",
+    "url": "https://github.com/cts/jailbreak-wordpress/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/webcats/dscrape/blob/master/LICENSE.txt"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "git",
+      "url": "http://github.com/cts/wordpress-theme-downloader.git"
+    }
+  ],
+  "dependencies": {
+    "optimist": "*",
+    "underscore": "*",
+    "jsdom": "*",
+    "jquery": "*",
+    "util": "*",
+    "url": "*",
+    "http-agent": "*",
+    "jsuri": "*",
+    "grunt": "*",
+    "grunt-contrib-jshint": "~0.1.1",
+    "grunt-contrib-nodeunit": "~0.1.2",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-qunit": "*",
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-watch": "*"
+  },
+  "devDependencies": {
+  },
+  "engines": {
+    "node": ">=0.1.9"
+  },
+  "directories": {
+    "lib": "./lib"
+  },
+  "main": "./lib"
+}
+
