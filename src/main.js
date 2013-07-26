@@ -14,23 +14,27 @@ printError = function(line) {
   process.stderr.write(line + "\n");
 };
 
-BANNER = "Usage: scrape-themes <IntoDirectory>";
+BANNER = "Usage: scrape-themes zip|meta <IntoDirectory>";
 
 exports.run = function() {
   var argv = optimist.usage(BANNER).argv;
-  if (argv._.length < 1) {
+  if (argv._.length < 2) {
     optimist.showHelp();
     return false;
   }
   
-  var workspaceDirectory = argv._[0];
+  var scrapeWhat = argv._[0];
+  var workspaceDirectory = argv._[1];
 
-  // Create the Workspace directory if it doesn't exist
-  if (! fs.existsSync(workspaceDirectory)) {
-    fs.mkdirSync(workspaceDirectory);
+  if ((scrapeWhat == 'zip') || (scrapeWhat == 'meta')) {
+    // Create the Workspace directory if it doesn't exist
+    if (! fs.existsSync(workspaceDirectory)) {
+      fs.mkdirSync(workspaceDirectory);
+    }
+    var scraper = new Jailbreak.Scraper.WordpressOrgScraper(scrapeWhat, workspaceDirectory);
+    scraper.scrape();
+  } else {
+    optimist.showHelp();
   }
- 
-  var scraper = new Jailbreak.Scraper.WordpressOrgScraper(workspaceDirectory);
-  scraper.scrape();
 };
 

@@ -5,9 +5,10 @@ if (typeof Jailbreak.Scraper == "undefined") {
   Jailbreak.Scraper = {};
 }
 
-Jailbreak.Scraper.WordpressOrgScraper = function(workspace) {
+Jailbreak.Scraper.WordpressOrgScraper = function(kind, workspace) {
   // This is the workspace directory
   this.name = "WordpressOrgScraper";
+  this.kind = kind;
   this.workspace = workspace;
 
   // This is the filename of state that you can save to disk so you can resume scraping later.
@@ -33,7 +34,7 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step1_DetermineNumberPages = fun
     console.log("Determining number pages");
     var request = require('request');
     var jsdom = require('jsdom');
-    request({ uri:"http://wordpress.org/extend/themes/browse/popular/"},
+    request({ uri:"http://wordpress.org/themes/browse/popular/"},
       function (error, response, body) {
         if (error && response.statusCode !== 200) {
           console.log('Error when contacting wordpress');
@@ -44,7 +45,7 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step1_DetermineNumberPages = fun
           done: function (err, window) {
             var $ = window.jQuery;
             var pages = $(".next.page-numbers").prev().html();
-            self.data.numberPages = 5;
+            self.data.numberPages = parseInt(pages, 10);
             self.saveToFile();
             self.step2_scrapeNextPage();
           }
@@ -69,12 +70,13 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step2_scrapeNextPage = function(
      this.data.page_html = [];
      this.saveToFile();
    }
-     console.log("step 2 scraping next page, this.data.numberPages: " + this.data.numberPages + " , this.data.page_html.length: " +this.data.page_html.length);
    if (this.data.page_html.length===this.data.numberPages) {
+     console.log("Step 2: Already complete!");
      this.step3_scrapeThemeUrls();
    } else {
     var pageNum = this.data.page_html.length +1;
-    var pageUri = "http://wordpress.org/extend/themes/browse/popular/page/" + pageNum;
+    var pageUri = "http://wordpress.org/themes/browse/popular/page/" + pageNum;
+    console.log("Step 2: List Page " + pageNum + "/" + this.data.numberPages + ": " + pageUri);
     var request = require('request');
     request({ uri: pageUri},
       function (error, response, body) {
@@ -127,11 +129,14 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step3_scrapeThemeUrls = function
            console.log("errors: " + errors);
          }
          var $ = window.$;
+
          $('.plugin-block h3 a').map(function() {
            urls.push(this.href);
            self.data.numberOfThemes++;
            console.log("link: " + this.href);
          });
+
+         
          self.data.theme_urls.push(urls);
          self.saveToFile();
          self.step3_scrapeThemeUrls();
@@ -140,7 +145,14 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step3_scrapeThemeUrls = function
    } 
 };
 
+
+/*
+ * If the "kind" is zip, then this fetches the ZIP file.
+ * If the "kind" is meta, then this writes the JSON
+ */
+
 Jailbreak.Scraper.WordpressOrgScraper.prototype.step4_scrapeZipFiles = function() {
+  // 
   var self = this;
   console.log("step 4 scraping zip files");
    if (typeof this.data.zip_urls=="undefined") {
@@ -172,15 +184,64 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step4_scrapeZipFiles = function(
              }
              var $ = window.$;
              var zip = $('a.activatelink').attr('href');
-             console.log("zip: " + zip);
              self.data.zip_urls.push(zip);
-             var file =fs.createWriteStream(path.join(self.workspace,self.ShortZipName(zip)));
-             var r = http.get(zip, function(response) {
-             response.pipe(file);
-             self.saveToFile();
-             self.step4_scrapeZipFiles();
-           });
-         
+
+             if (self.kind == 'zip') {
+               var file =fs.createWriteStream(path.join(self.workspace,self.ShortZipName(zip)));
+               var r = http.get(zip, function(response) {
+                 response.pipe(file);
+                 self.saveToFile();
+                 self.step4_scrapeZipFiles();
+               });
+             } else {
+               // SAVE PAGE META
+               var page = {};
+
+               // Author
+               var author= $(".theme-contributor-info div a").first();
+               if (author.length > 0) {
+                 page.author = author.html();
+                 page.authorUrl = author.attr('href');
+               }
+    
+               var tags = $("#plugin-tags a");
+               page.tags = [];
+               $.each(tags, function(idx, val) {
+                 var tag = $(val);
+                 var tagObj = {};
+                 tagObj.name = tag.html();
+                 tagObj.url = tag.attr('href');
+                 page.tags.push(tagObj);
+               });
+    
+               var stars = $(".counter-count");
+               if (stars.length == 5) {
+                 page.stars = [
+                   parseInt($(stars.get(4)).html(), 10), // 1 star
+                   parseInt($(stars.get(3)).html(), 10),
+                   parseInt($(stars.get(2)).html(), 10),
+                   parseInt($(stars.get(1)).html(), 10),
+                   parseInt($(stars.get(0)).html(), 10) // 5 star
+                 ];
+               }
+    
+               $("#fyi li:nth-child(1) strong").remove();
+               var last = $("#fyi li:nth-child(1)").html().trim();
+               page.lastUpdated = last;
+    
+               $("#fyi li:nth-child(2) strong").remove();
+               var downloaded = $("#fyi li:nth-child(2)").html().trim().replace(/,/g, "");
+               page.downloadCount = downloaded;
+    
+               page.statsUrl = $("li.section-stats a").attr("href");
+
+               fs.writeFileSync(
+                   path.join(self.workspace, self.ShortJsonName(zip)),
+                   JSON.stringify(page)
+               );
+               self.saveToFile();
+               self.step4_scrapeZipFiles();
+             }
          }
        });
      });
@@ -202,6 +263,11 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.loadFromFile = function() {
 Jailbreak.Scraper.WordpressOrgScraper.prototype.ShortZipName = function(name) {
   var ind = name.indexOf("download");
   return name.substring(ind+9, name.length);
+};
+
+Jailbreak.Scraper.WordpressOrgScraper.prototype.ShortJsonName = function(name) {
+  var ind = name.indexOf("download");
+  return name.substring(ind+9, name.length).replace(/zip$/, "json");
 };
 
 Jailbreak.Scraper.WordpressOrgScraper.prototype.saveToFile = function() {
