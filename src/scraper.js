@@ -46,6 +46,7 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step1_DetermineNumberPages = fun
             var $ = window.jQuery;
             var pages = $(".next.page-numbers").prev().html();
             self.data.numberPages = parseInt(pages, 10);
+            console.log("Numbe of pages: " + self.data.numberPages);
             self.saveToFile();
             self.step2_scrapeNextPage();
           }
@@ -75,7 +76,7 @@ Jailbreak.Scraper.WordpressOrgScraper.prototype.step2_scrapeNextPage = function(
      this.step3_scrapeThemeUrls();
    } else {
     var pageNum = this.data.page_html.length +1;
-    var pageUri = "http://wordpress.org/themes/browse/popular/page/" + pageNum;
+    var pageUri = "http://wordpress.org/themes/browse/popular/pages/" + pageNum;
     console.log("Step 2: List Page " + pageNum + "/" + this.data.numberPages + ": " + pageUri);
     var request = require('request');
     request({ uri: pageUri},
